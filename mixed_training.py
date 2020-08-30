@@ -5,10 +5,10 @@
 from pyimagesearch import datasets
 from pyimagesearch import models
 from sklearn.model_selection import train_test_split
-from keras.layers.core import Dense
-from keras.models import Model
-from keras.optimizers import Adam
-from keras.layers import concatenate
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.layers import concatenate
 import numpy as np
 import argparse
 import locale
@@ -53,7 +53,8 @@ testY = testAttrX["price"] / maxPrice
 
 # create the MLP and CNN models
 mlp = models.create_mlp(trainAttrX.shape[1], regress=False)
-cnn = models.create_cnn(64, 64, 3, regress=False)
+# cnn = models.create_cnn(64, 64, 3, regress=False)
+cnn = models.createResNetV1(64, 64, 3, regress=False)
 
 # create the input to our final set of layers as the *output* of both
 # the MLP and CNN
