@@ -29,7 +29,7 @@ print("[INFO] processing data...")
 split = train_test_split(df, images, test_size=0.25, random_state=42)
 (trainAttrX, testAttrX, trainImagesX, testImagesX) = split
 
-# scale  house prices to the range [0, 1] 
+# scale house prices to the range [0, 1] 
 maxPrice = trainAttrX["price"].max()
 trainY = trainAttrX["price"] / maxPrice
 testY = testAttrX["price"] / maxPrice
