@@ -6,6 +6,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.layers import concatenate
+from tensorflow.keras.callbacks import ReduceLROnPlateau
 import numpy as np
 import argparse
 import locale
@@ -29,7 +30,7 @@ print("[INFO] processing data...")
 split = train_test_split(df, images, test_size=0.25, random_state=42)
 (trainAttrX, testAttrX, trainImagesX, testImagesX) = split
 
-# scale house prices to the range [0, 1] 
+# scale  house prices to the range [0, 1] 
 maxPrice = trainAttrX["price"].max()
 trainY = trainAttrX["price"] / maxPrice
 testY = testAttrX["price"] / maxPrice
@@ -46,6 +47,7 @@ x = Dense(1, activation="linear")(x)
 
 model = Model(inputs=[mlp.input, cnn.input], outputs=x)
 opt = Adam(lr=1e-3, decay=1e-3 / 200)
+dynamicLR = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8, mode='auto', min_lr=1e-5)
 model.compile(loss="mean_absolute_percentage_error", optimizer=opt)
 
 plot_model(
@@ -62,7 +64,7 @@ print("[INFO] training model...")
 model.fit(
 	[trainAttrX, trainImagesX], trainY,
 	validation_data=([testAttrX, testImagesX], testY),
-	epochs=200, batch_size=8)
+	epochs=200, batch_size=8,callbacks=[dynamicLR])
 
 
 print("[INFO] predicting house prices...")
