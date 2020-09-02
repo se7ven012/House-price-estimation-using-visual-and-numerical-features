@@ -8,6 +8,7 @@ Using MLP and ResNet
 - pandas 1.1.1
 - graphviz 2.40.1
 - numpy 1.19.1
+- pydot 1.4.1
 - scikit-learn 0.23.2
 
 ## Experiment
