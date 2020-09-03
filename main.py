@@ -1,6 +1,9 @@
+#%%
 from dataprocessing import datasets
 from dataprocessing import models
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from tensorflow.keras.models import load_model
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.models import Model
 from tensorflow.keras.utils import plot_model
@@ -11,22 +14,24 @@ import numpy as np
 import argparse
 import locale
 import os
+# for cuDNN debug
+from tensorflow.compat.v1 import ConfigProto
+from tensorflow.compat.v1 import InteractiveSession
+config = ConfigProto()
+config.gpu_options.allow_growth = True
+session = InteractiveSession(config=config)
+# for cuDNN debug
 
-ap = argparse.ArgumentParser()
-ap.add_argument("-d", "--dataset", type=str, required=True,
-	help="path to input dataset of house images")
-args = vars(ap.parse_args())
+#%%
+# data processing
+inputPath = 'data'
+df = datasets.load_house_attributes(inputPath+'/HousesInfo.txt')
 
-print("[INFO] loading house attributes...")
-inputPath = os.path.sep.join([args["dataset"], "HousesInfo.txt"])
-df = datasets.load_house_attributes(inputPath)
-
-# load images and scale the pixel to the range [0, 1]
-print("[INFO] loading house images...")
-images = datasets.load_house_images(df, args["dataset"])
+print("loading images...")
+images = datasets.load_house_images(df,inputPath)
 images = images / 255.0
 
-print("[INFO] processing data...")
+print("processing data...")
 split = train_test_split(df, images, test_size=0.25, random_state=42)
 (trainAttrX, testAttrX, trainImagesX, testImagesX) = split
 
@@ -34,10 +39,14 @@ split = train_test_split(df, images, test_size=0.25, random_state=42)
 maxPrice = trainAttrX["price"].max()
 trainY = trainAttrX["price"] / maxPrice
 testY = testAttrX["price"] / maxPrice
-
+ 
 # min-max scaling on continuous features, one-hot encoding on categorical features
 (trainAttrX, testAttrX) = datasets.process_house_attributes(df, trainAttrX, testAttrX)
 
+if not os.path.exists('models'):
+    os.makedirs('models')
+
+#%%
 # create models
 mlp = models.create_mlp(trainAttrX.shape[1], regress=False)
 cnn = models.createResNetV1(64, 64, 3, regress=False)
@@ -47,9 +56,29 @@ x = Dense(1, activation="linear")(x)
 
 model = Model(inputs=[mlp.input, cnn.input], outputs=x)
 opt = Adam(lr=1e-3, decay=1e-3 / 200)
-dynamicLR = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=8, mode='auto', min_lr=1e-5)
+dynamicLR = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=30, mode='auto', min_lr=1e-6)
 model.compile(loss="mean_absolute_percentage_error", optimizer=opt)
 
+filename = 'models/model.h5'
+model.save(filename)
+print('>Saved %s' % filename)
+
+print("training model...")
+model.fit(
+    [trainAttrX, trainImagesX], trainY,
+    validation_data=([testAttrX, testImagesX], testY),
+    epochs=200, batch_size=8,callbacks=[dynamicLR])
+
+pred = model.predict([testAttrX, testImagesX])
+diff = pred.flatten() - testY
+percentDiff = (diff / testY) * 100
+absPercentDiff = np.abs(percentDiff)
+mean = np.mean(absPercentDiff)
+std = np.std(absPercentDiff)
+
+print("mean: {:.2f}%, std: {:.2f}%".format(mean, std))
+
+#%%
 plot_model(
     model,
     to_file="model.png",
@@ -59,29 +88,3 @@ plot_model(
     expand_nested=False,
     dpi=96,
 )
-
-print("[INFO] training model...")
-model.fit(
-	[trainAttrX, trainImagesX], trainY,
-	validation_data=([testAttrX, testImagesX], testY),
-	epochs=200, batch_size=8,callbacks=[dynamicLR])
-
-
-print("[INFO] predicting house prices...")
-preds = model.predict([testAttrX, testImagesX])
-
-# compute the difference between the predicted house prices and the actual house prices, 
-# then compute the percentage difference and the absolute percentage difference
-diff = preds.flatten() - testY
-percentDiff = (diff / testY) * 100
-absPercentDiff = np.abs(percentDiff)
-
-# compute the mean and standard deviation of the absolute percentage difference
-mean = np.mean(absPercentDiff)
-std = np.std(absPercentDiff)
-
-locale.setlocale(locale.LC_ALL, "en_US.UTF-8")
-print("[INFO] avg. house price: {}, std house price: {}".format(
-	locale.currency(df["price"].mean(), grouping=True),
-	locale.currency(df["price"].std(), grouping=True)))
-print("[INFO] mean: {:.2f}%, std: {:.2f}%".format(mean, std))
