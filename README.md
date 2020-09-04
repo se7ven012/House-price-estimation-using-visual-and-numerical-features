@@ -16,5 +16,5 @@ Using MLP and ResNet
 **Run the program:**
 
 ```
-python main.py --dataset "put your data path here"
+python main.py
 ```
