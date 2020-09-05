@@ -142,12 +142,10 @@ def createResNetV1(width, height, depth, regress=False):
     )
     v = AveragePooling2D(pool_size=8, name="AvgPool")(v)
     v = Flatten()(v)
-    v = Dense(16)(v)
-    v = Activation("relu")(v)
+    v = Dense(16, activation="relu")(v)
     v = BatchNormalization(axis=chanDim)(v)
     v = Dropout(0.5)(v)
-    v = Dense(4)(v)
-    v = Activation("relu")(v)
+    v = Dense(4, activation="relu")(v)
 
     if regress:
         v = Dense(1, activation="linear")(v)
