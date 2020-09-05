@@ -69,6 +69,7 @@ model.fit(
     validation_data=([testAttrX, testImagesX], testY),
     epochs=200, batch_size=8,callbacks=[dynamicLR])
 
+# accuracy calculation
 pred = model.predict([testAttrX, testImagesX])
 diff = pred.flatten() - testY
 percentDiff = (diff / testY) * 100
